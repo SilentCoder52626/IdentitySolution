@@ -1,3 +1,4 @@
+using Consul;
 using IdentityService.Domain.Entities;
 using IdentityService.Infrastructure.Persistence;
 using IdentityService.Web.ViewModels;
@@ -26,6 +27,13 @@ public class PermissionsController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(string? module, string? status)
     {
+        PermissionListViewModel model = await ConfigureIndex(module, status);
+
+        return View(model);
+    }
+
+    private async Task<PermissionListViewModel> ConfigureIndex(string? module, string? status)
+    {
         var model = new PermissionListViewModel();
         model.SelectedModule = module;
         model.StatusFilter = status;
@@ -40,17 +48,7 @@ public class PermissionsController : Controller
         // Only query permissions when a module is selected
         if (!string.IsNullOrEmpty(module))
         {
-            var query = _context.Permissions.Where(p => p.Module == module);
-
-            if (status == "active")
-            {
-                query = query.Where(p => p.IsActive);
-            }
-            else if (status == "inactive")
-            {
-                query = query.Where(p => !p.IsActive);
-            }
-
+            
             var allPermissions = await _context.Permissions
                 .Include(p => p.Parent)
                 .Where(p => p.Module == module)
@@ -74,7 +72,7 @@ public class PermissionsController : Controller
             model.Permissions = new List<PermissionViewModel>();
         }
 
-        return View(model);
+        return model;
     }
 
     [HttpPost]
@@ -94,7 +92,14 @@ public class PermissionsController : Controller
     
     private async Task<IActionResult> CreateInternal(CreatePermissionRequest request)
     {
-        if (!ModelState.IsValid) return await Index(request.Module, null);
+        if (!ModelState.IsValid)
+        {
+            var model = await ConfigureIndex(request.Module, null);
+
+            return View(nameof(Index), model);
+            //return await Index(request.Module, null);
+
+        }
 
         // Validate Module Exists
         var moduleEntity = await _context.Modules.FirstOrDefaultAsync(m => m.Name == request.Module && m.IsActive);
@@ -194,8 +199,21 @@ public class PermissionsController : Controller
 
     private List<PermissionViewModel> BuildPermissionHierarchy(List<Permission> permissions, Guid? parentId = null)
     {
-        return permissions
-            .Where(p => p.ParentId == parentId)
+        IEnumerable<Permission> currentLevel;
+
+        if (parentId == null)
+        {
+            // Initial call: Find true roots (ParentId == null) 
+            // OR "effective roots" (items whose parent is NOT in this current permissions list)
+            var ids = permissions.Select(p => p.Id).ToHashSet();
+            currentLevel = permissions.Where(p => p.ParentId == null || !ids.Contains(p.ParentId.Value));
+        }
+        else
+        {
+            currentLevel = permissions.Where(p => p.ParentId == parentId);
+        }
+
+        return currentLevel
             .Select(p => new PermissionViewModel
             {
                 Id = p.Id,
@@ -207,6 +225,7 @@ public class PermissionsController : Controller
                 ParentName = p.Parent?.Name,
                 Children = BuildPermissionHierarchy(permissions, p.Id)
             })
+            .OrderBy(p => p.Name)
             .ToList();
     }
 }

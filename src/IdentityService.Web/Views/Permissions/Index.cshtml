@@ -365,7 +365,7 @@ else
                 <div class="modal-body">
                     <div class="form-group mb-3">
                         <label class="form-label">Parent Permission (Optional)</label>
-                        <select name="CreatePermissionInput.ParentId" id="create_parentId" class="form-select">
+                            <select name="CreatePermissionInput.ParentId" id="create_parentId" class="form-select" >
                             <option value="">-- No Parent (Root) --</option>
                             @foreach (var p in flattenedPermissions)
                             {
@@ -375,12 +375,12 @@ else
                     </div>
                     <div class="form-group mb-3">
                         <label class="form-label required">Permission Name</label>
-                        <input name="CreatePermissionInput.Name" class="form-control" placeholder="e.g. CanApproveOrders" required />
+                            <input name="CreatePermissionInput.Name" class="form-control" required="required" placeholder="e.g. CanApproveOrders" />
                         <div class="form-text">Use descriptive names like CanRead, CanWrite, CanDelete</div>
                     </div>
                     <div class="form-group mb-0">
-                        <label class="form-label">Description</label>
-                        <textarea name="CreatePermissionInput.Description" class="form-control" rows="2" placeholder="Optional description"></textarea>
+                            <label class="form-label required">Description</label>
+                        <textarea name="CreatePermissionInput.Description" required="required" class="form-control" rows="2" placeholder="Description"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -419,8 +419,8 @@ else
                         <input id="edit_name" name="Name" class="form-control" required />
                     </div>
                     <div class="form-group mb-3">
-                        <label class="form-label">Description</label>
-                        <textarea id="edit_description" name="Description" class="form-control" rows="2"></textarea>
+                        <label class="form-label required">Description</label>
+                        <textarea id="edit_description" name="Description" class="form-control" required rows="2"></textarea>
                     </div>
                     <div class="form-group mb-0">
                         <div class="form-check">
