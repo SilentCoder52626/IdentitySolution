@@ -77,7 +77,7 @@ else
                                     @(string.IsNullOrEmpty(role.Description) ? "—" : role.Description)
                                 </td>
                                 <td>
-                                    <a asp-controller="RolePermission" asp-action="Index" asp-route-roleId="@role.Id" 
+                                    <a asp-controller="RolePermission" asp-action="Index" asp-route-roleId="@role.Id" asp-route-module="@Model.Module" 
                                        class="text-primary text-sm">
                                         @role.Permissions.Count permissions
                                     </a>
