@@ -42,7 +42,7 @@ public class RolesController : Controller
         if (!string.IsNullOrEmpty(model.Module))
         {
             // Lock module if passed via query
-            model.IsModuleReadOnly = true; 
+            //model.IsModuleReadOnly = true; 
 
             var roles = await _roleManager.Roles
                 .Where(r => r.Module == model.Module)
@@ -82,8 +82,10 @@ public class RolesController : Controller
         
         if (!ModelState.IsValid) 
         {
-             // Re-load data
-             return await Index(model.CreateRoleInput.Module ?? model.Module);
+            // Re-load data
+
+            return await ReloadAndReturnView(model);
+
         }
 
         var input = model.CreateRoleInput;
@@ -146,10 +148,55 @@ public class RolesController : Controller
         return await ReloadAndReturnView(model);
     }
 
+    [HttpPost]
+    public async Task<IActionResult> Update(string roleId, RoleIndexViewModel model)
+    {
+        var role = await _roleManager.Roles
+            .Include(r => r.RolePermissions)
+            .ThenInclude(rp => rp.Permission)
+            .FirstOrDefaultAsync(r => r.Id == roleId);
+
+        if (role == null)
+        {
+            return NotFound();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return await ReloadAndReturnView(model);
+        }
+
+        var input = model.CreateRoleInput;
+        role.Name = input.Name;
+        role.Description = input.Description;
+
+        var result = await _roleManager.UpdateAsync(role);
+        if (result.Succeeded)
+        {
+            // Publish role updated event
+            await _publishEndpoint.Publish<IRoleUpdated>(new
+            {
+                RoleId = role.Id,
+                Name = role.Name,
+                Module = role.Module,
+                Permissions = role.RolePermissions.Select(rp => rp.Permission.Name).ToList()
+            });
+
+            return RedirectToAction("Index", new { module = role.Module });
+        }
+
+        foreach (var error in result.Errors)
+        {
+            ModelState.AddModelError("", error.Description);
+        }
+
+        return await ReloadAndReturnView(model);
+    }
+
     private async Task<IActionResult> ReloadAndReturnView(RoleIndexViewModel model)
     {
         model.Modules = await _consulService.GetAllModulesAsync();
-        model.Module = model.CreateRoleInput.Module ?? model.Module;
+        model.Module = String.IsNullOrEmpty(model.CreateRoleInput.Module) ? model.Module : model.CreateRoleInput.Module;
         
         if (!string.IsNullOrEmpty(model.Module))
         {
